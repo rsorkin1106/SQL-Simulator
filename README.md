@@ -85,6 +85,8 @@ Cleans up all internal data (i.e. no memory leaks) and exits the program.
 
 ## Example Input
 
+(Checkpoint_2_input.txt)
+
 CREATE cities 5 string string int double bool name state population area is_capital?
 INSERT INTO cities 7 ROWS
 
