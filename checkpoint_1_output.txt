@@ -1,0 +1,7 @@
+% % New table 281class with column(s) emotion person Y/N created
+% New table cities with column(s) name state population area is_capital? created
+% New table pets with column(s) name likes_cats? likes_dogs? created
+% New table cartoon_characters with column(s) name created
+% Table cities deleted
+% Table pets deleted
+% Thanks for being silly!

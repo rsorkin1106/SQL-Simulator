@@ -1,0 +1,38 @@
+% % New table 281class with column(s) emotion person Y/N created
+% New table cities with column(s) name state population area is_capital? created
+% New table pets with column(s) name likes_cats? likes_dogs? created
+% emotion person Y/N 
+Printed 0 matching rows from 281class
+% likes_cats? 
+Printed 0 matching rows from pets
+% Added 3 rows to 281class from position 0 to 2
+% is_capital? name population 
+Printed 0 matching rows from cities
+% emotion person 
+stressed Paoletti 
+happy Darden 
+sad Angstadt 
+Printed 3 matching rows from 281class
+% Added 5 rows to cities from position 0 to 4
+% person 
+Paoletti 
+Darden 
+Angstadt 
+Printed 3 matching rows from 281class
+% Added 3 rows to pets from position 0 to 2
+% Table 281class deleted
+% population is_capital? name 
+864816 false San_Francisco 
+120782 false Ann_Arbor 
+453579 false Miami 
+98111 true Albany 
+2705000 false Chicago 
+Printed 5 matching rows from cities
+% Table cities deleted
+% name likes_dogs? 
+Paoletti false 
+Darden true 
+Angstadt true 
+Printed 3 matching rows from pets
+% Table pets deleted
+% Thanks for being silly!
