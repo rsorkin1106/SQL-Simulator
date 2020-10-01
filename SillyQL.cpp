@@ -24,7 +24,8 @@ class SillyQL {
     bool quiet = false;
 
     unordered_map<string, Table> tables;
-
+    
+    //Comparators for table entries
     class OpLess {
     public:
         OpLess(const TableEntry &val_in)
@@ -61,7 +62,8 @@ class SillyQL {
     private:
         TableEntry val;
     };
-
+    
+    //Comparators for vector<TableEntry>
     class VecLess {
     public:
         VecLess(size_t t, const TableEntry &x)
@@ -105,6 +107,8 @@ class SillyQL {
     };
 
 public:
+    
+    //Parses command line arguments
     void getOptions(int argc, char** argv)
     {
         int option_index = 0, option = 0;
@@ -128,7 +132,8 @@ public:
             }
         }
     }
-
+    
+    //Continues to read input from terminal until Quit command
     void readCommands()
     {
         string trash, cmd;
@@ -182,7 +187,8 @@ public:
     }
 
 private:
-
+    
+    //Creates a table with given parameters
     void create()
     {
         string name, temp, type;
@@ -221,7 +227,8 @@ private:
         cout << "created\n";
         return;
     }
-
+    
+    //Inserts given values into existing table
     void insert()
     {
         string name, trash, sVal;
@@ -238,6 +245,8 @@ private:
                 getline(cin, trash);
             return;
         }
+        
+        //Gets index of final element before size increase
         start = tables[name].entries.size();
         tables[name].entries.reserve(start + num);
         numCols = tables[name].cols.size();
@@ -274,7 +283,8 @@ private:
         }
         cout << "Added " << num << " rows to " << name << " from position " << start << " to " << start + num - 1 << "\n";
     }
-
+    
+    //Removes table database
     void remove()
     {
         string name;
@@ -287,7 +297,8 @@ private:
         tables.erase(name);
         cout << "Table " << name << " deleted\n";
     }
-
+    
+    //Prints selected values to terminals
     void print()
     {
         string name, colName, command;
@@ -331,7 +342,8 @@ private:
         else
             printWhere(indexes, colNames, name);
     }
-
+    
+    //Prints every entry in selected columns
     void printAll(const vector<size_t>& indexes, const vector<string> &colNames, const string& name)
     {
         //Prints colNames
@@ -351,7 +363,8 @@ private:
             cout << "\n";
         }
     }
-
+    
+    //Prints entries from sleected columns based on parameters
     void printWhere(const vector<size_t>& indexes, const vector<string> &colNames, const string& name)
     {
         string col;
@@ -375,7 +388,8 @@ private:
 
         calcRows(indexes, col, name, true);
     }
-
+    
+    //Delets selected rows from a table
     void deleteRows()
     {
         string trash, col, name;
@@ -398,7 +412,8 @@ private:
 
         calcRows(col, name, false);
     }
-
+    
+    //Prints selected columns from the joining of 2 tables based on parameters
     void join()
     {
         //Pair = {table, printCol}
@@ -449,7 +464,8 @@ private:
 
         joinAlgo(cols, name1, name2, col1, col2);
     }
-
+    
+    //Generates a hash or bst index based on parameters
     void generate()
     {
         string trash, name, type, col;
@@ -468,7 +484,8 @@ private:
             cout << "Error: " << col << " does not name a column in " << name << "\n";
             getline(cin, trash);
         }
-
+        
+        //Can only have one index per table
         if (type == "hash")
         {
             if (!tables[name].bst.empty())
@@ -507,12 +524,14 @@ private:
         }
         cout << "Created " << type << " index for table " << name << " on column " << col << "\n";
     }
-
+    
+    //Terminates Program
     void quit()
     {
         cout << "Thanks for being silly!\n";
     }
 
+    //Calculates selected rows for REMOVE and PRINT WHERE
     void calcRows(const vector<size_t>& indexes, const string& col, const string& name, bool print)
     {
         string sVal;
@@ -542,14 +561,15 @@ private:
         }
     }
 
-    //Remove does not need a vector
+    //Creates null vector for Remove to be passed into other calcRows
     void calcRows(const string& col, const string& name, bool print)
     {
         vector<size_t> temp;
+        //Remove does not need a vector
         calcRows(temp, col, name, print);
     }
 
-    //Splits for bool
+    //Decides which operator to use
     void split3(const vector<size_t>& indexes, const TableEntry& temp, const string& col, const string& name, bool print, char op)
     {
 
@@ -581,8 +601,8 @@ private:
             break;
         }
     }
-
-
+    
+    //Helper function for calcRow to allow predicate
     template<typename Pred>
     void calcRowHelp(const vector<size_t>& indexes, const string& col, const string& name, Pred predicate)
     {
@@ -605,7 +625,8 @@ private:
         }
         cout << "Printed " << count << " matching rows from " << name << "\n";
     }
-
+    
+    //Removes all rows that pass predicate
     template<typename Pred>
     void removeRow(const string& name, Pred predicate)
     {
@@ -618,7 +639,8 @@ private:
 
         cout << "Deleted " << initial - tables[name].entries.size() << " rows from " << name << "\n";
     }
-
+    
+    //Checks columns in Join() to make sure all columns exist
     bool checkCol(vector<pair<string, string>> &cols, const string& printCol, const string &name1, const string &name2, size_t printNum)
     {
         if (printNum == 1)
@@ -647,6 +669,7 @@ private:
     }
 
     //Pair = {table, printCol}
+    //Algorithm for join
     void joinAlgo(const vector<pair<string, string>>& cols, const string& name1, const string& name2, const string &col1, const string &col2)
     {
         size_t idx1 = tables[name1].cols[col1], idx2 = tables[name2].cols[col2], count = 0;
@@ -660,8 +683,8 @@ private:
             }
             cout << "\n";
         }
-
-
+        
+        //Prints all entries that match the join
         for (size_t i = 0; i < tables[name1].entries.size(); ++i)
         {
             for (size_t j = 0; j < tables[name2].entries.size(); ++j)
@@ -688,6 +711,7 @@ private:
         cout << "Printed " << count << " rows from joining " << name1 << " to " << name2 << "\n";
     }
 
+    //Creates a hash of table <name> on column <col>
     void Hash(const string& name, const string& col)
     {
         tables[name].index = col;
@@ -697,7 +721,8 @@ private:
             tables[name].hash[tables[name].entries[i][idx]].push_back(i);
         }
     }
-
+    
+    //Creates a BST` of table <name> on column <col>
     void BST(const string& name, const string& col)
     {
         tables[name].index = col;
