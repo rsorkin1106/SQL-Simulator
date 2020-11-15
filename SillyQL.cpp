@@ -1,4 +1,3 @@
-//Project Identifier: C0F4DFE8B340D81183C208F70F9D2D797908754D
 #include "TableEntry.h"
 #include <unordered_map>
 #include <map>
@@ -19,58 +18,23 @@ class SillyQL {
         unordered_map<string, size_t> cols;
         unordered_map<TableEntry, vector<size_t>> hash;
         map<TableEntry, vector<size_t>> bst;
-        string index = "";
+        string index = "", name;
     };
     bool quiet = false;
 
     unordered_map<string, Table> tables;
-    
-    //Comparators for table entries
-    class OpLess {
-    public:
-        OpLess(const TableEntry &val_in)
-        : val(val_in) {}
-        bool operator() (TableEntry x)
-        {
-            return x < val;
-        }
-    private:
-        TableEntry val;
-    };
 
-
-    class OpEqual {
-    public:
-        OpEqual (const TableEntry& val_in)
-            : val(val_in) {}
-        bool operator() (TableEntry x)
-        {
-            return x == val;
-        }
-    private:
-        TableEntry val;
-    };
-
-    class OpGreater {
-    public:
-        OpGreater(const TableEntry& val_in)
-            : val(val_in) {}
-        bool operator() (TableEntry x)
-        {
-            return x > val;
-        }
-    private:
-        TableEntry val;
-    };
-    
-    //Comparators for vector<TableEntry>
     class VecLess {
     public:
         VecLess(size_t t, const TableEntry &x)
             :col(t), p(x) {}
-        bool operator() (const vector<TableEntry>& temp)
+        bool operator() (const vector<TableEntry>& temp) const
         {
             return temp[col] < p;
+        }
+        bool operator() (TableEntry x) const
+        {
+            return x < p;
         }
 
     private:
@@ -82,9 +46,13 @@ class SillyQL {
     public:
         VecEqual(size_t t, const TableEntry& x)
             :col(t), p(x) {}
-        bool operator() (const vector<TableEntry>& temp)
+        bool operator() (const vector<TableEntry>& temp) const
         {
             return temp[col] == p;
+        }
+        bool operator() (TableEntry x) const
+        {
+            return x == p;
         }
 
     private:
@@ -96,9 +64,13 @@ class SillyQL {
     public:
         VecGreater(size_t t, const TableEntry& x)
             :col(t), p(x) {}
-        bool operator() (const vector<TableEntry>& temp)
+        bool operator() (const vector<TableEntry>& temp) const
         {
             return temp[col] > p;
+        }
+        bool operator() (TableEntry x) const
+        {
+            return x > p;
         }
 
     private:
@@ -107,8 +79,6 @@ class SillyQL {
     };
 
 public:
-    
-    //Parses command line arguments
     void getOptions(int argc, char** argv)
     {
         int option_index = 0, option = 0;
@@ -132,13 +102,14 @@ public:
             }
         }
     }
-    
-    //Continues to read input from terminal until Quit command
+
     void readCommands()
     {
+        size_t count = 0;
         string trash, cmd;
         do
         {
+            ++count;
             cout << "% ";
             cin >> cmd;
             switch (cmd[0])
@@ -187,8 +158,7 @@ public:
     }
 
 private:
-    
-    //Creates a table with given parameters
+
     void create()
     {
         string name, temp, type;
@@ -201,34 +171,44 @@ private:
             return;
         }
         cin >> num;
-        tables[name];
-        tables[name].types.reserve(num);
+        Table* table = &tables[name];
+        table->name = name;
+        table->types.reserve(num);
         //Adds column types
         for (size_t i = 0; i < num; ++i)
         {
             cin >> type;
-            if (type == "string")
-                tables[name].types.push_back(EntryType::String);
-            else if (type == "bool")
-                tables[name].types.push_back(EntryType::Bool);
-            else if (type == "int")
-                tables[name].types.push_back(EntryType::Int);
-            else
-                tables[name].types.push_back(EntryType::Double);
+            switch (type[0])
+            {
+            case 's':
+                table->types.push_back(EntryType::String);
+                break;
+
+            case 'b':
+                table->types.push_back(EntryType::Bool);
+                break;
+
+            case 'i':
+                table->types.push_back(EntryType::Int);
+                break;
+
+            case 'd':
+                table->types.push_back(EntryType::Double);
+                break;
+            }
         }
         cout << "New table " << name << " with column(s) ";
         //Adds column names
         for (size_t i = 0; i < num; ++i)
         {
             cin >> temp;
-            tables[name].cols[temp] = i;
+            table->cols[temp] = i;
             cout << temp << " ";
         }
         cout << "created\n";
         return;
     }
-    
-    //Inserts given values into existing table
+
     void insert()
     {
         string name, trash, sVal;
@@ -236,7 +216,7 @@ private:
         double dVal;
         bool bVal;
         size_t start, num, numCols;
-        cin >> trash >> name >> num >> trash;
+        cin >> trash >> name >> num;
         if (tables.find(name) == tables.end())
         {
             cout << "Error: " << name << " does not name a table in the database\n";
@@ -245,18 +225,18 @@ private:
                 getline(cin, trash);
             return;
         }
-        
-        //Gets index of final element before size increase
-        start = tables[name].entries.size();
-        tables[name].entries.reserve(start + num);
-        numCols = tables[name].cols.size();
+        cin >> trash;
+        Table* table = &tables[name];
+        start = table->entries.size();
+        table->entries.reserve(start + num);
+        numCols = table->cols.size();
         for (size_t i = start; i < start + num; ++i)
         {
             vector<TableEntry> temp;
             temp.reserve(numCols);
             for (size_t j = 0; j < numCols; ++j)
             {
-                switch (tables[name].types[j])
+                switch (table->types[j])
                 {
                 case EntryType::Bool:
                     cin >> bVal;
@@ -279,12 +259,17 @@ private:
                     break;
                 }
             }
-            tables[name].entries.push_back(temp);
+            if (!table->hash.empty())
+                table->hash[temp[table->cols[table->index]]].push_back(i);
+            else if (!table->bst.empty())
+                table->bst[temp[table->cols[table->index]]].push_back(i);
+
+            table->entries.push_back(temp);
         }
         cout << "Added " << num << " rows to " << name << " from position " << start << " to " << start + num - 1 << "\n";
+        assert(table->hash.empty() || table->bst.empty());
     }
-    
-    //Removes table database
+
     void remove()
     {
         string name;
@@ -297,8 +282,7 @@ private:
         tables.erase(name);
         cout << "Table " << name << " deleted\n";
     }
-    
-    //Prints selected values to terminals
+
     void print()
     {
         string name, colName, command;
@@ -316,11 +300,12 @@ private:
         vector<string> colNames;
         indexes.reserve(num);
         colNames.reserve(num);
-        for (size_t i = 0; i < tables[name].cols.size(); ++i)
+        Table* table = &tables[name];
+        for (size_t i = 0; i < table->cols.size(); ++i)
         {
             cin >> colName;
-            auto it = tables[name].cols.find(colName);
-            if (it == tables[name].cols.end())
+            auto it = table->cols.find(colName);
+            if (it == table->cols.end())
             {
                 cout << "Error: " << colName << " does not name a column in " << name << "\n";
                 getline(cin, name);
@@ -335,16 +320,15 @@ private:
         if (command == "ALL")
         {
             if (!quiet)
-                printAll(indexes, colNames, name);
+                printAll(indexes, colNames, table);
 
-            cout << "Printed " << tables[name].entries.size() << " matching rows from " << name << "\n";
+            cout << "Printed " << table->entries.size() << " matching rows from " << name << "\n";
         }
         else
-            printWhere(indexes, colNames, name);
+            printWhere(indexes, colNames, table);
     }
-    
-    //Prints every entry in selected columns
-    void printAll(const vector<size_t>& indexes, const vector<string> &colNames, const string& name)
+
+    void printAll(const vector<size_t>& indexes, const vector<string> &colNames, Table* table)
     {
         //Prints colNames
         for (size_t i = 0; i < colNames.size(); ++i)
@@ -354,24 +338,23 @@ private:
         cout << "\n";
 
         //Prints rows
-        for (size_t i = 0; i < tables[name].entries.size(); ++i)
+        for (size_t i = 0; i < table->entries.size(); ++i)
         {
             for (size_t j = 0; j < indexes.size(); ++j)
             {
-                cout << tables[name].entries[i][indexes[j]] << " ";
+                cout << table->entries[i][indexes[j]] << " ";
             }
             cout << "\n";
         }
     }
-    
-    //Prints entries from sleected columns based on parameters
-    void printWhere(const vector<size_t>& indexes, const vector<string> &colNames, const string& name)
+
+    void printWhere(const vector<size_t>& indexes, const vector<string> &colNames,Table* table)
     {
         string col;
         cin >> col;
-        if (tables[name].cols.find(col) == tables[name].cols.end())
+        if (table->cols.find(col) == table->cols.end())
         {
-            cout << "Error: " << col << " does not name a column in " << name << "\n";
+            cout << "Error: " << col << " does not name a column in " << table->name << "\n";
             getline(cin, col);
             return;
         }
@@ -386,10 +369,9 @@ private:
             cout << "\n";
         }
 
-        calcRows(indexes, col, name, true);
+        calcRows(table, indexes, col, true);
     }
-    
-    //Delets selected rows from a table
+
     void deleteRows()
     {
         string trash, col, name;
@@ -402,18 +384,18 @@ private:
             return;
         }
 
+        Table* table = &tables[name];
         cin >> trash >> col;
-        if (tables[name].cols.find(col) == tables[name].cols.end())
+        if (table->cols.find(col) == table->cols.end())
         {
             cout << "Error: " << col << " does not name a column in " << name << "\n";
             getline(cin, col);
             return;
         }
 
-        calcRows(col, name, false);
+        calcRows(table, col, false);
     }
-    
-    //Prints selected columns from the joining of 2 tables based on parameters
+
     void join()
     {
         //Pair = {table, printCol}
@@ -438,17 +420,21 @@ private:
         }
 
         cin >> trash >> col1;
-        if (tables[name1].cols.find(col1) == tables[name1].cols.end())
+        Table* table1 = &tables[name1];
+        Table* table2 = &tables[name2];
+        if (table1->cols.find(col1) == table1->cols.end())
         {
             cout << "Error: " << col1 << " does not name a column in " << name1 << "\n";
             getline(cin, trash);
+            return;
         }
 
         cin >> trash >> col2;
-        if (tables[name2].cols.find(col2) == tables[name2].cols.end())
+        if (table2->cols.find(col2) == table2->cols.end())
         {
             cout << "Error: " << col2 << " does not name a column in " << name2 << "\n";
             getline(cin, trash);
+            return;
         }
 
         cin >> trash >> trash >> num;
@@ -458,14 +444,13 @@ private:
         for (size_t i = 0; i < num; ++i)
         {
             cin >> printCol >> printNum;
-            if (checkCol(cols, printCol, name1, name2, printNum))
+            if (checkCol(table1, table2, cols, printCol, printNum))
                 return;
         }
 
-        joinAlgo(cols, name1, name2, col1, col2);
+        joinAlgo(table1, table2, cols, col1, col2);
     }
-    
-    //Generates a hash or bst index based on parameters
+
     void generate()
     {
         string trash, name, type, col;
@@ -478,61 +463,63 @@ private:
             return;
         }
 
+        Table* table = &tables[name];
         cin >> type >> trash >> trash >> col;
-        if (tables[name].cols.find(col) == tables[name].cols.end())
+        if (table->cols.find(col) == table->cols.end())
         {
             cout << "Error: " << col << " does not name a column in " << name << "\n";
             getline(cin, trash);
+            return;
         }
-        
-        //Can only have one index per table
+
         if (type == "hash")
         {
-            if (!tables[name].bst.empty())
+            if (!table->bst.empty())
             {
-                tables[name].bst.clear();
-                Hash(name, col);
+                table->bst.clear();
+                Hash(table, col);
             }
-            else if (!tables[name].hash.empty())
+            else if (!table->hash.empty())
             {
-                if (tables[name].index != col)
+                //If a hash for that column already exists do nothing
+                if (table->index != col)
                 {
-                    tables[name].hash.clear();
-                    Hash(name, col);
+                    Hash(table, col);
                 }
             }
+            //Neither exist
             else
-                Hash(name, col);
+                Hash(table, col);
         }
         else
         {
-            if (!tables[name].hash.empty())
+            if (!table->hash.empty())
             {
-                tables[name].hash.clear();
-                BST(name, col);
+                table->hash.clear();
+                BST(table, col);
             }
-            else if (!tables[name].bst.empty())
+            else if (!table->bst.empty())
             {
-                if (tables[name].index != col)
+                //If a bst for that column already exists do nothing
+                if (table->index != col)
                 {
-                    tables[name].bst.clear();
-                    BST(name, col);
+                    BST(table, col);
                 }
             }
+            //Neither exist
             else
-                BST(name, col);
+                BST(table, col);
         }
         cout << "Created " << type << " index for table " << name << " on column " << col << "\n";
+        assert(table->bst.empty() || table->hash.empty());
     }
-    
-    //Terminates Program
+
     void quit()
     {
         cout << "Thanks for being silly!\n";
     }
 
-    //Calculates selected rows for REMOVE and PRINT WHERE
-    void calcRows(const vector<size_t>& indexes, const string& col, const string& name, bool print)
+    void calcRows(Table* table, const vector<size_t>& indexes, const string& col, bool print)
     {
         string sVal;
         double dVal;
@@ -540,167 +527,227 @@ private:
         bool bVal;
         char op;
         cin >> op;
-        switch (tables[name].types[tables[name].cols[col]])
+        switch (table->types[table->cols[col]])
         {
         case EntryType::Bool:
             cin >> bVal;
-            split3(indexes, TableEntry(bVal), col, name, print, op);
+            split3(table, indexes, TableEntry(bVal), col, print, op);
             break;
         case EntryType::Double:
             cin >> dVal;
-            split3(indexes, TableEntry(dVal), col, name, print, op);
+            split3(table, indexes, TableEntry(dVal), col, print, op);
             break;
         case EntryType::Int:
             cin >> iVal;
-            split3(indexes, TableEntry(iVal), col, name, print, op);
+            split3(table, indexes, TableEntry(iVal), col, print, op);
             break;
         case EntryType::String:
             cin >> sVal;
-            split3(indexes, TableEntry(sVal), col, name, print, op);
+            split3(table, indexes, TableEntry(sVal), col, print, op);
             break;
         }
     }
 
-    //Creates null vector for Remove to be passed into other calcRows
-    void calcRows(const string& col, const string& name, bool print)
+    //Remove does not need a vector
+    void calcRows(Table* table, const string& col, bool print)
     {
-        vector<size_t> temp;
-        //Remove does not need a vector
-        calcRows(temp, col, name, print);
+        vector<size_t> temp(0);
+        calcRows(table, temp, col, print);
     }
 
-    //Decides which operator to use
-    void split3(const vector<size_t>& indexes, const TableEntry& temp, const string& col, const string& name, bool print, char op)
+    //Splits for bool
+    void split3(Table* table, const vector<size_t>& indexes, const TableEntry& temp, const string& col, bool print, char op)
     {
+        auto column = table->cols.find(col);
 
         switch (op)
         {
         case '<':
         {
             if (print)
-                calcRowHelp(indexes, col, name, OpLess(temp));
+            {
+                calcRowHelp(table, indexes, col, VecLess(column->second, temp));
+            }
             else
-                removeRow(name, VecLess(tables[name].cols[col], temp));
+                removeRow(table, VecLess(column->second, temp));
             break;
         }
 
         case '=':
         {
             if (print)
-                calcRowHelp(indexes, col, name, OpEqual(temp));
+            {
+                calcRowHelp(table, indexes, col, VecEqual(column->second, temp));
+            }
             else
-                removeRow(name, VecEqual(tables[name].cols[col], temp));
+                removeRow(table, VecEqual(column->second, temp));
             break;
         }
 
         case '>':
             if (print)
-                calcRowHelp(indexes, col, name, OpGreater(temp));
+            {
+                calcRowHelp(table, indexes, col, VecGreater(column->second, temp));
+            }
             else
-                removeRow(name, VecGreater(tables[name].cols[col], temp));
+                removeRow(table, VecGreater(column->second, temp));
             break;
         }
     }
-    
-    //Helper function for calcRow to allow predicate
+
+
     template<typename Pred>
-    void calcRowHelp(const vector<size_t>& indexes, const string& col, const string& name, Pred predicate)
+    void calcRowHelp(Table* table, const vector<size_t>& indexes, const string& col, Pred predicate)
     {
-        size_t count = 0;
-        size_t idx = tables[name].cols[col];
-        for (size_t i = 0; i < tables[name].entries.size(); ++i)
+        if (!table->bst.empty() && table->index == col)
         {
-            if (predicate(tables[name].entries[i][idx]))
+            size_t count = 0;
+            for (auto it = table->bst.begin(); it != table->bst.end(); ++it)
             {
-                ++count;
-                if (!quiet)
+                if (predicate(it->first))
                 {
-                    for (size_t j = 0; j < indexes.size(); ++j)
+                    count += it->second.size();
+                    if (!quiet)
                     {
-                        cout << tables[name].entries[i][indexes[j]] << " ";
+                        for (size_t i = 0; i < it->second.size(); ++i)
+                        {
+                            for (size_t j = 0; j < indexes.size(); ++j)
+                            {
+                                cout << table->entries[it->second[i]][indexes[j]] << " ";
+                            }
+                            cout << "\n";
+                        }
                     }
-                    cout << "\n";
                 }
             }
+            cout << "Printed " << count << " matching rows from " << table->name << "\n";
+            return;
         }
-        cout << "Printed " << count << " matching rows from " << name << "\n";
+        if (quiet)
+        {
+            cout << "Printed " << count_if(table->entries.begin(), table->entries.end(), predicate) << " matching rows from " << table->name << "\n";
+            return;
+        }
+        size_t count = 0;
+        size_t idx = table->cols[col];
+        for (size_t i = 0; i < table->entries.size(); ++i)
+        {
+            if (predicate(table->entries[i][idx]))
+            {
+                ++count;
+                for (size_t j = 0; j < indexes.size(); ++j)
+                {
+                    cout << table->entries[i][indexes[j]] << " ";
+                }
+                cout << "\n";
+            }
+        }
+        cout << "Printed " << count << " matching rows from " << table->name << "\n";
     }
-    
-    //Removes all rows that pass predicate
+
     template<typename Pred>
-    void removeRow(const string& name, Pred predicate)
+    void removeRow(Table* table, Pred predicate)
     {
-        size_t initial = tables[name].entries.size();
-        auto start = tables[name].entries.begin();
+        size_t initial = table->entries.size();
+        auto start = table->entries.begin();
 
-        auto end = remove_if(tables[name].entries.begin(), tables[name].entries.end(), predicate);
+        auto end = remove_if(table->entries.begin(), table->entries.end(), predicate);
 
-        tables[name].entries.resize(end - start);
+        table->entries.resize(end - start);
+        size_t size = initial - table->entries.size();
 
-        cout << "Deleted " << initial - tables[name].entries.size() << " rows from " << name << "\n";
+        cout << "Deleted " << size << " rows from " << table->name << "\n";
+        if (!table->hash.empty())
+        {
+            //No need to clear and re-generate if no rows are deleted
+            if (size != 0)
+            {
+                table->hash.clear();
+                Hash(table, table->index);
+            }
+        }
+        if (!table->bst.empty())
+        {
+            //No need to clear and re-generate if no rows are deleted
+            if (size != 0)
+            {
+                table->bst.clear();
+                BST(table, table->index);
+            }
+        }
+        assert(table->bst.empty() || table->hash.empty());
     }
-    
-    //Checks columns in Join() to make sure all columns exist
-    bool checkCol(vector<pair<string, string>> &cols, const string& printCol, const string &name1, const string &name2, size_t printNum)
+
+    bool checkCol(Table* table1, Table* table2, vector<pair<string, string>> &cols, const string& printCol, size_t printNum)
     {
         if (printNum == 1)
         {
-            if (tables[name1].cols.find(printCol) == tables[name1].cols.end())
+            if (table1->cols.find(printCol) == table1->cols.end())
             {
                 string trash;
-                cout << "Error: " << printCol << " does not name a column in " << name1 << "\n";
+                cout << "Error: " << printCol << " does not name a column in " << table1->name << "\n";
                 getline(cin, trash);
                 return true;
             }
-            cols.push_back({ name1, printCol });
+            cols.push_back({ table1->name, printCol });
         }
         else
         {
-            if (tables[name2].cols.find(printCol) == tables[name2].cols.end())
+            if (table2->cols.find(printCol) == table2->cols.end())
             {
                 string trash;
-                cout << "Error: " << printCol << " does not name a column in " << name2 << "\n";
+                cout << "Error: " << printCol << " does not name a column in " << table2->name << "\n";
                 getline(cin, trash);
                 return true;
             }
-            cols.push_back({ name2, printCol });
+            cols.push_back({ table2->name, printCol });
         }
         return false;
     }
 
     //Pair = {table, printCol}
-    //Algorithm for join
-    void joinAlgo(const vector<pair<string, string>>& cols, const string& name1, const string& name2, const string &col1, const string &col2)
+    void joinAlgo(Table* table1, Table* table2, const vector<pair<string, string>>& columns, const string &col1, const string &col2)
     {
-        size_t idx1 = tables[name1].cols[col1], idx2 = tables[name2].cols[col2], count = 0;
-
         //Prints colNames
         if (!quiet)
         {
-            for (size_t i = 0; i < cols.size(); ++i)
+            for (size_t i = 0; i < columns.size(); ++i)
             {
-                cout << cols[i].second << " ";
+                cout << columns[i].second << " ";
             }
             cout << "\n";
         }
-        
-        //Prints all entries that match the join
-        for (size_t i = 0; i < tables[name1].entries.size(); ++i)
+
+        //Checks to see if either or both tables have an index
+        if (table2->index == col2 && !table2->hash.empty())
         {
-            for (size_t j = 0; j < tables[name2].entries.size(); ++j)
+            joinBoth(table1, table2, table2->hash, columns, col1);
+            return;
+        }
+        else if(table2->index != col2 || table2->hash.empty())
+        {
+            unordered_map<TableEntry, vector<size_t>> temp;
+            tempHash(table2, col2, temp);
+            joinBoth(table1, table2, temp, columns, col1);
+            return;
+        }
+        
+        size_t idx1 = table1->cols[col1], idx2 = table2->cols[col2], count = 0;
+        for (size_t i = 0; i < table1->entries.size(); ++i)
+        {
+            for (size_t j = 0; j < table2->entries.size(); ++j)
             {
-                if (tables[name1].entries[i][idx1] == tables[name2].entries[j][idx2])
+                if (table1->entries[i][idx1] == table2->entries[j][idx2])
                 {
                     count++;
                     if (!quiet)
                     {
-                        for (size_t k = 0; k < cols.size(); ++k)
+                        for (size_t k = 0; k < columns.size(); ++k)
                         {
-                            size_t printIdx = tables[cols[k].first].cols[cols[k].second];
-                            if (cols[k].first == name1)
-                                cout << tables[name1].entries[i][printIdx] << " ";
+                            if (columns[k].first == table1->name)
+                                cout << table1->entries[i][table1->cols[columns[k].second]] << " ";
                             else
-                                cout << tables[name2].entries[j][printIdx] << " ";
+                                cout << table2->entries[j][table2->cols[columns[k].second]] << " ";
                         }
                         cout << "\n";
                     }
@@ -708,28 +755,64 @@ private:
             }
         }
 
-        cout << "Printed " << count << " rows from joining " << name1 << " to " << name2 << "\n";
+        cout << "Printed " << count << " rows from joining " << table1->name << " to " << table2->name << "\n";
     }
 
-    //Creates a hash of table <name> on column <col>
-    void Hash(const string& name, const string& col)
+    //Pair = {table, printCol}
+    void joinBoth(Table* table1, Table* table2, const unordered_map<TableEntry, vector<size_t>>& map, const vector<pair<string, string>>& columns, const string &col1)
     {
-        tables[name].index = col;
-        size_t idx = tables[name].cols[col];
-        for (size_t i = 0; i < tables[name].entries.size(); ++i)
+        size_t count = 0, colIdx = table1->cols[col1];
+        for (size_t i = 0; i < table1->entries.size(); ++i)
         {
-            tables[name].hash[tables[name].entries[i][idx]].push_back(i);
+            auto it = map.find(table1->entries[i][colIdx]);
+            if (it != map.end())
+            {
+                count += it->second.size();
+                if (!quiet)
+                {
+                    for (size_t j = 0; j < it->second.size(); ++j)
+                    {
+                        for (size_t k = 0; k < columns.size(); ++k)
+                        {
+                            if (columns[k].first == table1->name)
+                                cout << table1->entries[i][table1->cols[columns[k].second]] << " ";
+                            else
+                                cout << table2->entries[it->second[j]][table2->cols[columns[k].second]] << " ";
+                        }
+                        cout << "\n";
+                    }
+                }
+            }
+        }
+        cout << "Printed " << count << " rows from joining " << table1->name << " to " << table2->name << "\n";
+    }
+
+    void Hash(Table* table, const string& col)
+    {
+        table->hash.clear();
+        table->index = col;
+        size_t idx = table->cols[col];
+        for (size_t i = 0; i < table->entries.size(); ++i)
+        {
+            table->hash[table->entries[i][idx]].push_back(i);
         }
     }
-    
-    //Creates a BST` of table <name> on column <col>
-    void BST(const string& name, const string& col)
+
+    void tempHash(Table* table, const string& col, unordered_map<TableEntry, vector<size_t>>& map)
     {
-        tables[name].index = col;
-        size_t idx = tables[name].cols[col];
-        for (size_t i = 0; i < tables[name].entries.size(); ++i)
+        size_t idx = table->cols[col];
+        for (size_t i = 0; i < table->entries.size(); ++i)
+            map[table->entries[i][idx]].push_back(i);
+    }
+
+    void BST(Table* table, const string& col)
+    {
+        table->bst.clear();
+        table->index = col;
+        size_t idx = table->cols[col];
+        for (size_t i = 0; i < table->entries.size(); ++i)
         {
-            tables[name].bst[tables[name].entries[i][idx]].push_back(i);
+            table->bst[table->entries[i][idx]].push_back(i);
         }
     }
 };
